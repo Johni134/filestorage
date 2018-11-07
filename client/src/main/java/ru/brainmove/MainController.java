@@ -18,7 +18,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
-    public static final String CLIENT_STORAGE = "client_storage/";
+    private static final String CLIENT_STORAGE = "client_storage/";
     @FXML
     TextField tfFileName;
 
@@ -57,7 +57,7 @@ public class MainController implements Initializable {
         }
     }
 
-    public void refreshLocalFilesList() {
+    private void refreshLocalFilesList() {
         if (Platform.isFxApplicationThread()) {
             try {
                 refreshList();
@@ -81,7 +81,7 @@ public class MainController implements Initializable {
     }
 
     public void pressOnUploadBtn(ActionEvent actionEvent) {
-        String focusedItem = filesList.getFocusModel().getFocusedItem();
+        final String focusedItem = (filesList.getFocusModel() == null ? null : filesList.getFocusModel().getFocusedItem());
         if (focusedItem != null) {
             try {
                 Network.sendMsg(new FileMessage(Paths.get(CLIENT_STORAGE + focusedItem)));
