@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns:fx="http://javafx.com/fxml/1"
+      maxHeight="-Infinity"
+      maxWidth="-Infinity"
+      minHeight="-Infinity"
+      minWidth="-Infinity"
+      prefHeight="93.0"
+      prefWidth="200.0"
+      xmlns="http://javafx.com/javafx/8.0.172-ea"
+      fx:controller="ru.brainmove.LoginController">
+    <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="17.0" prefWidth="211.0" text="Login or registry"/>
+    <TextField fx:id="tfLogin" promptText="Enter login..."/>
+    <PasswordField fx:id="pfPassword" promptText="Enter password..."/>
+    <HBox prefHeight="100.0" prefWidth="200.0">
+        <Button mnemonicParsing="false" prefHeight="25.0" prefWidth="103.0" text="Login"
+                onAction="#pressOnLoginBtn"/>
+        <Button mnemonicParsing="false" prefHeight="25.0" prefWidth="111.0" text="Registry"
+                onAction="#pressOnRegistryBtn"/>
+    </HBox>
+</VBox>
