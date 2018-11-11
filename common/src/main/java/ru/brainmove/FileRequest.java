@@ -1,13 +1,12 @@
 package ru.brainmove;
 
-public class FileRequest extends AbstractMessage {
-    private String filename;
+import lombok.Getter;
 
-    public String getFilename() {
-        return filename;
-    }
+@Getter
+class FileRequest extends AbstractMessage {
+    private final String filename;
 
-    public FileRequest(String filename) {
+    FileRequest(String filename) {
         this.filename = filename;
     }
 }
