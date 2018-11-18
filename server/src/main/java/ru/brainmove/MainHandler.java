@@ -6,10 +6,13 @@ import io.netty.util.ReferenceCountUtil;
 import ru.brainmove.api.UserService;
 import ru.brainmove.service.UserServiceBean;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
 
@@ -40,6 +43,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     Files.delete(filePath);
                 }
                 Files.write(Paths.get(SERVER_STORAGE + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                sendFileList(ctx);
             }
             if (msg instanceof AuthRequest) {
                 final AuthRequest authRequest = (AuthRequest) msg;
@@ -56,8 +60,11 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                         errMsg = "Возникла ошибка при регистрации! Такой логин уже существует!";
                     }
                 }
-                final AuthMessage authMessage = new AuthMessage(success, errMsg, authRequest.getAuthType());
+                final AuthMessage authMessage = new AuthMessage(success, errMsg, authRequest.getAuthType(), (success ? userService.findByUser(authRequest.getLogin()) : null));
                 ctx.writeAndFlush(authMessage);
+            }
+            if (msg instanceof FileListRequest) {
+                sendFileList(ctx);
             }
         } finally {
             ReferenceCountUtil.release(msg);
@@ -72,5 +79,11 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         ctx.close();
+    }
+
+    private void sendFileList(ChannelHandlerContext ctx) throws IOException {
+        List<String> filesList = new ArrayList<>();
+        Files.list(Paths.get(SERVER_STORAGE)).map(p -> p.getFileName().toString()).forEach(filesList::add);
+        ctx.writeAndFlush(new FileListMessage(filesList));
     }
 }

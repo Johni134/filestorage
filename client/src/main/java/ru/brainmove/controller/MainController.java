@@ -1,29 +1,36 @@
-package ru.brainmove;
+package ru.brainmove.controller;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.FocusModel;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
+import lombok.Getter;
+import lombok.Setter;
+import ru.brainmove.*;
+import ru.brainmove.entity.User;
+import ru.brainmove.util.FxUtils;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.ResourceBundle;
 
+@Setter
+@Getter
 public class MainController implements Initializable {
     private static final String CLIENT_STORAGE = "client_storage/";
     @FXML
-    TextField tfFileName;
+    ListView<String> filesListServer;
 
     @FXML
     ListView<String> filesList;
+    private User user;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -33,9 +40,13 @@ public class MainController implements Initializable {
                 while (true) {
                     AbstractMessage am = Network.readObject();
                     if (am instanceof FileMessage) {
-                        FileMessage fm = (FileMessage) am;
+                        final FileMessage fm = (FileMessage) am;
                         Files.write(Paths.get(CLIENT_STORAGE + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
                         refreshLocalFilesList();
+                    }
+                    if (am instanceof FileListMessage) {
+                        final FileListMessage fileListMessage = (FileListMessage) am;
+                        refreshServerFilesList(fileListMessage.getFileList());
                     }
                 }
             } catch (ClassNotFoundException | IOException e) {
@@ -47,14 +58,22 @@ public class MainController implements Initializable {
         t.setDaemon(true);
         t.start();
         filesList.setItems(FXCollections.observableArrayList());
+        filesListServer.setItems(FXCollections.observableArrayList());
+        sendFileListRequest();
         refreshLocalFilesList();
     }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
-        if (tfFileName.getLength() > 0) {
-            Network.sendMsg(new FileRequest(tfFileName.getText()));
-            tfFileName.clear();
+        final String focusedItem = (filesListServer.getFocusModel() == null ? null : filesListServer.getFocusModel().getFocusedItem());
+        if (focusedItem != null) {
+            Network.sendMsg(new FileRequest(focusedItem));
+        } else {
+            FxUtils.showAlertDialog("Ошибка!", "Ошибка скачивания файла", "Необходимо выбрать строку с файлом из списка!", Alert.AlertType.ERROR);
         }
+    }
+
+    private void sendFileListRequest() {
+        Network.sendMsg(new FileListRequest());
     }
 
     private void refreshLocalFilesList() {
@@ -77,7 +96,20 @@ public class MainController implements Initializable {
 
     private void refreshList() throws IOException {
         filesList.getItems().clear();
-        Files.list(Paths.get("client_storage")).map(p -> p.getFileName().toString()).forEach(o -> filesList.getItems().add(o));
+        Files.list(Paths.get(CLIENT_STORAGE)).map(p -> p.getFileName().toString()).forEach(o -> filesList.getItems().add(o));
+    }
+
+    private void refreshServerFilesList(List<String> serverFileList) {
+        if (Platform.isFxApplicationThread()) {
+            refreshServerList(serverFileList);
+        } else {
+            Platform.runLater(() -> refreshServerList(serverFileList));
+        }
+    }
+
+    private void refreshServerList(List<String> serverFileList) {
+        filesListServer.getItems().clear();
+        filesListServer.getItems().addAll(serverFileList);
     }
 
     public void pressOnUploadBtn(ActionEvent actionEvent) {
@@ -88,9 +120,10 @@ public class MainController implements Initializable {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-        else {
-            JOptionPane.showMessageDialog(null, "Необходимо выбрать строку с файлом из списка!", "Ошибка загрузки файла", JOptionPane.ERROR_MESSAGE);
+        } else {
+            FxUtils.showAlertDialog("Ошибка!", "Ошибка загрузки файла", "Необходимо выбрать строку с файлом из списка!", Alert.AlertType.ERROR);
         }
     }
+
+
 }

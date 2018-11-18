@@ -11,7 +11,7 @@ public class MainClient extends Application {
 
     private static Stage loginStage;
 
-    static Stage getLoginStage() {
+    public static Stage getLoginStage() {
         return loginStage;
     }
 

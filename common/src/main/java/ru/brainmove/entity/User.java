@@ -4,9 +4,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
-public class User {
+public class User implements Serializable {
 
     private String id;
 
