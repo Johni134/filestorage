@@ -1,6 +1,7 @@
-package ru.brainmove;
+package ru.brainmove.auth;
 
 import lombok.Getter;
+import ru.brainmove.AbstractMessage;
 
 @Getter
 public class AuthRequest extends AbstractMessage {

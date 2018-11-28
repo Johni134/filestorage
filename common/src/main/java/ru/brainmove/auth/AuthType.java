@@ -1,4 +1,4 @@
-package ru.brainmove;
+package ru.brainmove.auth;
 
 public enum AuthType {
 

@@ -1,6 +1,7 @@
-package ru.brainmove;
+package ru.brainmove.file;
 
 import lombok.Getter;
+import ru.brainmove.AbstractMessage;
 
 import java.io.IOException;
 import java.nio.file.Files;

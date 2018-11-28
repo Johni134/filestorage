@@ -4,6 +4,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import ru.brainmove.entity.Token;
 import ru.brainmove.entity.User;
 
 import java.util.List;
@@ -30,4 +31,13 @@ public interface UserRepository {
 
     @Delete("DELETE FROM users WHERE id = #{id}")
     void delete(User user);
+
+    @Select("SELECT * FROM tokens WHERE id = #{id} AND accessToken = #{accessToken}")
+    Token getTokenByIdAndAccess(Token token);
+
+    @Insert("INSERT INTO tokens (id, accessToken) VALUES (#{id}, #{accessToken})")
+    void insertToken(Token token);
+
+    @Delete("DELETE FROM tokens WHERE sysdate <= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)")
+    void clearOldTokens();
 }

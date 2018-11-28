@@ -1,5 +1,6 @@
 package ru.brainmove.service;
 
+import ru.brainmove.entity.Token;
 import ru.brainmove.entity.User;
 import ru.brainmove.repository.UserRepository;
 
@@ -41,4 +42,17 @@ class UserEntityService extends AbstractService {
     public void delete(User user) {
         userRepository.delete(user);
     }
+
+    Token getTokenByIdAndAccess(String id, String access) {
+        return userRepository.getTokenByIdAndAccess(new Token(id, access));
+    }
+
+    void insertToken(Token token) {
+        userRepository.insertToken(token);
+    }
+
+    void clearOldTokens() {
+        userRepository.clearOldTokens();
+    }
+
 }

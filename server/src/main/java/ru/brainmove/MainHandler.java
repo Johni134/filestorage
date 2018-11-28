@@ -4,6 +4,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 import ru.brainmove.api.UserService;
+import ru.brainmove.auth.AuthMessage;
+import ru.brainmove.auth.AuthRequest;
+import ru.brainmove.auth.AuthType;
+import ru.brainmove.entity.Token;
+import ru.brainmove.entity.User;
+import ru.brainmove.file.FileListMessage;
+import ru.brainmove.file.FileListRequest;
+import ru.brainmove.file.FileMessage;
+import ru.brainmove.file.FileRequest;
 import ru.brainmove.service.UserServiceBean;
 
 import java.io.IOException;
@@ -24,26 +33,10 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         try {
             if (msg == null) {
                 return;
-            }
-            if (msg instanceof FileRequest) {
-                final FileRequest fr = (FileRequest) msg;
-                if (Files.exists(Paths.get(SERVER_STORAGE + fr.getFilename()))) {
-                    final FileMessage fm = new FileMessage(Paths.get(SERVER_STORAGE + fr.getFilename()));
-                    ctx.writeAndFlush(fm);
-                }
-            }
-            if (msg instanceof FileMessage) {
-                final FileMessage fm = (FileMessage) msg;
-                final Path filePath = Paths.get(SERVER_STORAGE + fm.getFilename());
-                if (Files.exists(filePath)) {
-                    Files.delete(filePath);
-                }
-                Files.write(Paths.get(SERVER_STORAGE + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
-                sendFileList(ctx);
             }
             if (msg instanceof AuthRequest) {
                 final AuthRequest authRequest = (AuthRequest) msg;
@@ -60,12 +53,41 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                         errMsg = "Возникла ошибка при регистрации! Такой логин уже существует!";
                     }
                 }
-                final AuthMessage authMessage = new AuthMessage(success, errMsg, authRequest.getAuthType(), (success ? userService.findByUser(authRequest.getLogin()) : null));
+                final User user = (success ? userService.findByUser(authRequest.getLogin()) : null);
+                final Token token = userService.createToken(user);
+                final AuthMessage authMessage = new AuthMessage(success, errMsg, authRequest.getAuthType(), user, token);
                 ctx.writeAndFlush(authMessage);
+            } else if (msg instanceof AbstractMessage) {
+                // если не authrequest, то надо проверить access token и id
+                AbstractMessage abstractMessage = (AbstractMessage) msg;
+                String userPath = abstractMessage.getId() + "/";
+                // не прошли проверку
+                if (!userService.checkToken(abstractMessage.getId(), abstractMessage.getAccessToken()))
+                    return;
+                if (msg instanceof FileRequest) {
+                    final FileRequest fr = (FileRequest) msg;
+                    if (Files.exists(Paths.get(SERVER_STORAGE + userPath + fr.getFilename()))) {
+                        final FileMessage fm = new FileMessage(Paths.get(SERVER_STORAGE + userPath + fr.getFilename()));
+                        ctx.writeAndFlush(fm);
+                    }
+                }
+                if (msg instanceof FileMessage) {
+                    final FileMessage fm = (FileMessage) msg;
+                    final Path filePath = Paths.get(SERVER_STORAGE + userPath + fm.getFilename());
+                    final Path dirPath = Paths.get(SERVER_STORAGE + userPath);
+                    if (Files.exists(filePath)) {
+                        Files.delete(filePath);
+                    }
+                    Files.createDirectories(dirPath);
+                    Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
+                    sendFileList(ctx, userPath);
+                }
+                if (msg instanceof FileListRequest) {
+                    sendFileList(ctx, userPath);
+                }
             }
-            if (msg instanceof FileListRequest) {
-                sendFileList(ctx);
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
             ReferenceCountUtil.release(msg);
         }
@@ -81,9 +103,9 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
-    private void sendFileList(ChannelHandlerContext ctx) throws IOException {
+    private void sendFileList(ChannelHandlerContext ctx, String userPath) throws IOException {
         List<String> filesList = new ArrayList<>();
-        Files.list(Paths.get(SERVER_STORAGE)).map(p -> p.getFileName().toString()).forEach(filesList::add);
+        Files.list(Paths.get(SERVER_STORAGE + userPath)).map(p -> p.getFileName().toString()).forEach(filesList::add);
         ctx.writeAndFlush(new FileListMessage(filesList));
     }
 }

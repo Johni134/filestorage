@@ -9,13 +9,20 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ListView;
 import lombok.Getter;
 import lombok.Setter;
-import ru.brainmove.*;
+import ru.brainmove.AbstractMessage;
+import ru.brainmove.Network;
+import ru.brainmove.entity.Token;
 import ru.brainmove.entity.User;
+import ru.brainmove.file.FileListMessage;
+import ru.brainmove.file.FileListRequest;
+import ru.brainmove.file.FileMessage;
+import ru.brainmove.file.FileRequest;
 import ru.brainmove.util.FxUtils;
 
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
@@ -31,6 +38,7 @@ public class MainController implements Initializable {
     @FXML
     ListView<String> filesList;
     private User user;
+    private Token accessToken;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -59,21 +67,29 @@ public class MainController implements Initializable {
         t.start();
         filesList.setItems(FXCollections.observableArrayList());
         filesListServer.setItems(FXCollections.observableArrayList());
-        sendFileListRequest();
         refreshLocalFilesList();
     }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
-        final String focusedItem = (filesListServer.getFocusModel() == null ? null : filesListServer.getFocusModel().getFocusedItem());
+        downloadFileFromServer(getFocusedItem(filesListServer));
+    }
+
+    private void downloadFileFromServer(final String focusedItem) {
         if (focusedItem != null) {
-            Network.sendMsg(new FileRequest(focusedItem));
+            final FileRequest fileRequest = new FileRequest(focusedItem);
+            fileRequest.setAccessToken(accessToken.getAccessToken());
+            fileRequest.setId(accessToken.getId());
+            Network.sendMsg(fileRequest);
         } else {
             FxUtils.showAlertDialog("Ошибка!", "Ошибка скачивания файла", "Необходимо выбрать строку с файлом из списка!", Alert.AlertType.ERROR);
         }
     }
 
-    private void sendFileListRequest() {
-        Network.sendMsg(new FileListRequest());
+    void sendFileListRequest() {
+        final FileListRequest fileListRequest = new FileListRequest();
+        fileListRequest.setAccessToken(accessToken.getAccessToken());
+        fileListRequest.setId(accessToken.getId());
+        Network.sendMsg(fileListRequest);
     }
 
     private void refreshLocalFilesList() {
@@ -108,15 +124,24 @@ public class MainController implements Initializable {
     }
 
     private void refreshServerList(List<String> serverFileList) {
+        final String focusedItem = getFocusedItem(filesListServer);
+        final int newIndexOfFocusedItem = serverFileList.indexOf(focusedItem);
         filesListServer.getItems().clear();
         filesListServer.getItems().addAll(serverFileList);
+        if (newIndexOfFocusedItem != -1) {
+            filesListServer.getSelectionModel().select(newIndexOfFocusedItem);
+            filesListServer.getFocusModel().focus(newIndexOfFocusedItem);
+            filesListServer.scrollTo(newIndexOfFocusedItem);
+        }
     }
 
-    public void pressOnUploadBtn(ActionEvent actionEvent) {
-        final String focusedItem = (filesList.getFocusModel() == null ? null : filesList.getFocusModel().getFocusedItem());
+    private void uploadFileToServer(final String focusedItem) {
         if (focusedItem != null) {
             try {
-                Network.sendMsg(new FileMessage(Paths.get(CLIENT_STORAGE + focusedItem)));
+                final FileMessage fileMessage = new FileMessage(Paths.get(CLIENT_STORAGE + focusedItem));
+                fileMessage.setAccessToken(accessToken.getAccessToken());
+                fileMessage.setId(accessToken.getId());
+                Network.sendMsg(fileMessage);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -125,5 +150,45 @@ public class MainController implements Initializable {
         }
     }
 
+    private void deleteFile(final String focusedItem) {
+        if (focusedItem != null) {
+            try {
+                final Path filePath = Paths.get(CLIENT_STORAGE + focusedItem);
+                if (Files.exists(filePath)) Files.delete(filePath);
+                refreshLocalFilesList();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            FxUtils.showAlertDialog("Ошибка!", "Ошибка удаления файла", "Необходимо выбрать строку с файлом из списка!", Alert.AlertType.ERROR);
+        }
+    }
 
+    public void pressOnUploadBtn(ActionEvent actionEvent) {
+        uploadFileToServer(getFocusedItem(filesList));
+    }
+
+    private String getFocusedItem(final ListView<String> items) {
+        return (items.getFocusModel() == null ? null : items.getFocusModel().getFocusedItem());
+    }
+
+    public void clientContextMenuUpload(ActionEvent actionEvent) {
+        uploadFileToServer(getFocusedItem(filesList));
+    }
+
+    public void clientContextMenuDelete(ActionEvent actionEvent) {
+        deleteFile(getFocusedItem(filesList));
+    }
+
+    public void serverContextMenuDownload(ActionEvent actionEvent) {
+        downloadFileFromServer(getFocusedItem(filesListServer));
+    }
+
+    public void clientContextMenuRefresh(ActionEvent actionEvent) {
+        refreshLocalFilesList();
+    }
+
+    public void serverContextMenuRefresh(ActionEvent actionEvent) {
+        sendFileListRequest();
+    }
 }

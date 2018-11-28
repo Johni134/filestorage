@@ -1,15 +1,16 @@
-package ru.brainmove;
+package ru.brainmove.file;
 
 import lombok.Getter;
+import ru.brainmove.AbstractMessage;
 
 import java.util.List;
 
 @Getter
 public class FileListMessage extends AbstractMessage {
 
-    List<String> fileList;
+    private List<String> fileList;
 
-    FileListMessage(List<String> fileList) {
+    public FileListMessage(List<String> fileList) {
         this.fileList = fileList;
     }
 }

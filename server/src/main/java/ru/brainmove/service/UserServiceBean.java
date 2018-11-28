@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.mindrot.jbcrypt.BCrypt;
 import ru.brainmove.api.UserService;
+import ru.brainmove.entity.Token;
 import ru.brainmove.entity.User;
 
 import java.io.IOException;
@@ -25,8 +26,7 @@ public class UserServiceBean implements UserService {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (userEntityService != null)
-                userEntityService.sqlSession.close();
+            closeConnection(userEntityService);
         }
 
         if (usersCount == 0) {
@@ -46,8 +46,7 @@ public class UserServiceBean implements UserService {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (userEntityService != null)
-                userEntityService.sqlSession.close();
+            closeConnection(userEntityService);
         }
         return foundUser;
     }
@@ -78,8 +77,7 @@ public class UserServiceBean implements UserService {
             e.printStackTrace();
             return false;
         } finally {
-            if (userEntityService != null)
-                userEntityService.sqlSession.close();
+            closeConnection(userEntityService);
         }
         return true;
     }
@@ -95,8 +93,7 @@ public class UserServiceBean implements UserService {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (userEntityService != null)
-                userEntityService.sqlSession.close();
+            closeConnection(userEntityService);
         }
         return isExist;
     }
@@ -116,8 +113,7 @@ public class UserServiceBean implements UserService {
             e.printStackTrace();
             return false;
         } finally {
-            if (userEntityService != null)
-                userEntityService.sqlSession.close();
+            closeConnection(userEntityService);
         }
         return true;
     }
@@ -137,9 +133,50 @@ public class UserServiceBean implements UserService {
             e.printStackTrace();
             return false;
         } finally {
-            if (userEntityService != null)
-                userEntityService.sqlSession.close();
+            closeConnection(userEntityService);
         }
         return true;
     }
+
+    @Override
+    public Token createToken(@Nullable User user) {
+        if (user == null) return null;
+        Token accessToken = new Token(user.getId(), UUID.randomUUID().toString());
+        UserEntityService userEntityService = null;
+        try {
+            userEntityService = new UserEntityService();
+            userEntityService.clearOldTokens();
+            userEntityService.insertToken(accessToken);
+        } catch (IOException e) {
+            accessToken = null;
+            e.printStackTrace();
+        } finally {
+            closeConnection(userEntityService);
+        }
+        return accessToken;
+    }
+
+    @Override
+    public boolean checkToken(@Nullable String id, @Nullable String accessToken) {
+        boolean tokenExist = false;
+        UserEntityService userEntityService = null;
+        try {
+            userEntityService = new UserEntityService();
+            userEntityService.clearOldTokens();
+            Token token = userEntityService.getTokenByIdAndAccess(id, accessToken);
+            if (token != null) tokenExist = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            closeConnection(userEntityService);
+        }
+        return tokenExist;
+    }
+
+    private void closeConnection(AbstractService userEntityService) {
+        if (userEntityService != null) {
+            userEntityService.sqlSession.close();
+        }
+    }
+
 }

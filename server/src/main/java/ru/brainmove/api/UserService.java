@@ -1,6 +1,7 @@
 package ru.brainmove.api;
 
 import org.jetbrains.annotations.Nullable;
+import ru.brainmove.entity.Token;
 import ru.brainmove.entity.User;
 
 public interface UserService {
@@ -30,4 +31,8 @@ public interface UserService {
             @Nullable String passwordOld,
             @Nullable String passwordNew
     );
+
+    Token createToken(@Nullable User user);
+
+    boolean checkToken(@Nullable String id, @Nullable String accessToken);
 }

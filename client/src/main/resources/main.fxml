@@ -6,9 +6,30 @@
       style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);"
       xmlns="http://javafx.com/javafx/8.0.172-ea" fx:controller="ru.brainmove.controller.MainController">
     <Label text="Файлы на сервере:"/>
-    <ListView fx:id="filesListServer" VBox.vgrow="ALWAYS"/>
+    <ListView fx:id="filesListServer" VBox.vgrow="ALWAYS">
+        <contextMenu>
+            <ContextMenu>
+                <items>
+                    <MenuItem mnemonicParsing="false" onAction="#serverContextMenuDownload" text="Скачать"/>
+                    <SeparatorMenuItem mnemonicParsing="false" onAction="#serverContextMenuRefresh" text="Обновить"/>
+                    <MenuItem mnemonicParsing="false" text="Unspecified Action"/>
+                </items>
+            </ContextMenu>
+        </contextMenu>
+    </ListView>
     <Button onAction="#pressOnDownloadBtn" text="Скачать"/>
     <Label text="Файлы на клиенте:"/>
-    <ListView fx:id="filesList" VBox.vgrow="ALWAYS"/>
+    <ListView fx:id="filesList" VBox.vgrow="ALWAYS">
+        <contextMenu>
+            <ContextMenu>
+                <items>
+                    <MenuItem mnemonicParsing="false" onAction="#clientContextMenuUpload" text="Загрузить"/>
+                    <MenuItem mnemonicParsing="false" onAction="#clientContextMenuDelete" text="Удалить"/>
+                    <SeparatorMenuItem mnemonicParsing="false"/>
+                    <MenuItem mnemonicParsing="false" onAction="#clientContextMenuRefresh" text="Обновить"/>
+                </items>
+            </ContextMenu>
+        </contextMenu>
+    </ListView>
     <Button onAction="#pressOnUploadBtn" text="Загрузить на сервер"/>
 </VBox>
