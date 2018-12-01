@@ -11,8 +11,8 @@
             <ContextMenu>
                 <items>
                     <MenuItem mnemonicParsing="false" onAction="#serverContextMenuDownload" text="Скачать"/>
-                    <SeparatorMenuItem mnemonicParsing="false" onAction="#serverContextMenuRefresh" text="Обновить"/>
-                    <MenuItem mnemonicParsing="false" text="Unspecified Action"/>
+                    <SeparatorMenuItem mnemonicParsing="false"/>
+                    <MenuItem mnemonicParsing="false" onAction="#serverContextMenuRefresh" text="Обновить"/>
                 </items>
             </ContextMenu>
         </contextMenu>

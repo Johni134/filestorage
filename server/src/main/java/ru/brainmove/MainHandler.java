@@ -26,6 +26,7 @@ import java.util.List;
 public class MainHandler extends ChannelInboundHandlerAdapter {
 
     private static final String SERVER_STORAGE = "server_storage/";
+    private static final String TEMP_FOLDER = "temp/";
     private UserService userService;
 
     MainHandler() {
@@ -73,14 +74,36 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 }
                 if (msg instanceof FileMessage) {
                     final FileMessage fm = (FileMessage) msg;
-                    final Path filePath = Paths.get(SERVER_STORAGE + userPath + fm.getFilename());
-                    final Path dirPath = Paths.get(SERVER_STORAGE + userPath);
+                    final String path = SERVER_STORAGE + (fm.getFileCounts() != 1 ? TEMP_FOLDER : "") + userPath;
+                    final Path filePath = Paths.get(path + fm.getFilename());
+                    final Path dirPath = Paths.get(path);
                     if (Files.exists(filePath)) {
                         Files.delete(filePath);
                     }
                     Files.createDirectories(dirPath);
                     Files.write(filePath, fm.getData(), StandardOpenOption.CREATE);
-                    sendFileList(ctx, userPath);
+                    // если не 1 файл, то надо прочитать директорию
+                    if (fm.getFileCounts() > 1) {
+                        // файлы все сложились в темп, преобразуем их
+                        long fileCounts = Files.list(Paths.get(path)).map(p -> p.getFileName().toString()).filter(p -> p.startsWith(fm.getRealFilename())).count();
+                        if (fm.getFileCounts().equals(fileCounts)) {
+                            final Path newFilePath = Paths.get(SERVER_STORAGE + userPath + fm.getRealFilename());
+                            final Path newDirPath = Paths.get(SERVER_STORAGE + userPath);
+                            if (Files.exists(newFilePath))
+                                Files.delete(newFilePath);
+                            Files.createDirectories(newDirPath);
+                            Files.list(Paths.get(path)).filter(p -> p.getFileName().toString().startsWith(fm.getRealFilename())).forEachOrdered(p -> {
+                                try {
+                                    Files.write(newFilePath, Files.readAllBytes(p), (!Files.exists(newFilePath) ? StandardOpenOption.CREATE : StandardOpenOption.APPEND));
+                                    Files.delete(p);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            });
+                            sendFileList(ctx, userPath);
+                        }
+                    } else
+                        sendFileList(ctx, userPath);
                 }
                 if (msg instanceof FileListRequest) {
                     sendFileList(ctx, userPath);
