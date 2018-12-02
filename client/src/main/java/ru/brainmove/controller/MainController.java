@@ -13,10 +13,7 @@ import ru.brainmove.AbstractMessage;
 import ru.brainmove.Network;
 import ru.brainmove.entity.Token;
 import ru.brainmove.entity.User;
-import ru.brainmove.file.FileListMessage;
-import ru.brainmove.file.FileListRequest;
-import ru.brainmove.file.FileMessage;
-import ru.brainmove.file.FileRequest;
+import ru.brainmove.file.*;
 import ru.brainmove.util.FxUtils;
 
 import java.io.File;
@@ -26,16 +23,16 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.ResourceBundle;
+
+import static ru.brainmove.file.FileUtils.MAX_BYTE_SIZE;
 
 @Setter
 @Getter
 public class MainController implements Initializable {
     private static final String CLIENT_STORAGE = "client_storage/";
     private static final String TEMP_FOLDER = "temp/";
-    private final int MAX_BYTE_SIZE = 1024 * 1024;
 
     @FXML
     ListView<String> filesListServer;
@@ -54,8 +51,14 @@ public class MainController implements Initializable {
                     AbstractMessage am = Network.readObject();
                     if (am instanceof FileMessage) {
                         final FileMessage fm = (FileMessage) am;
-                        Files.write(Paths.get(CLIENT_STORAGE + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
-                        refreshLocalFilesList();
+                        final String path = CLIENT_STORAGE + (fm.getFileCounts() != 1 ? TEMP_FOLDER : "");
+                        FileUtils.createFileAndDirectories(path, fm);
+                        if (fm.getFileCounts() > 1) {
+                            // файлы все сложились в темп, преобразуем их
+                            if (FileUtils.createFileFromTemp(path, CLIENT_STORAGE, fm))
+                                refreshLocalFilesList();
+                        } else
+                            refreshLocalFilesList();
                     }
                     if (am instanceof FileListMessage) {
                         final FileListMessage fileListMessage = (FileListMessage) am;
@@ -152,14 +155,13 @@ public class MainController implements Initializable {
                 File file = filePath.toFile();
                 if (file.length() > MAX_BYTE_SIZE) {
                     long remainFileSize = file.length();
-                    int offset = 0;
+                    long fileCountBySize = remainFileSize / MAX_BYTE_SIZE + 1;
+                    byte[] bytes = new byte[MAX_BYTE_SIZE];
                     Path tempPath = Paths.get(CLIENT_STORAGE + TEMP_FOLDER);
                     Files.createDirectories(tempPath);
                     RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
                     while (remainFileSize > 0) {
-                        byte[] bytes;
                         if (remainFileSize > MAX_BYTE_SIZE) {
-                            bytes = new byte[MAX_BYTE_SIZE];
                             randomAccessFile.read(bytes, 0, MAX_BYTE_SIZE);
                             remainFileSize -= MAX_BYTE_SIZE;
                         } else {
@@ -167,22 +169,10 @@ public class MainController implements Initializable {
                             randomAccessFile.read(bytes, 0, (int) remainFileSize);
                             remainFileSize = 0;
                         }
-                        String filePartName = String.format("%s.%03d", CLIENT_STORAGE + TEMP_FOLDER + focusedItem, fileCounts++);
-                        if (Files.exists(Paths.get(filePartName)))
-                            Files.delete(Paths.get(filePartName));
-                        Files.write(Paths.get(filePartName), bytes, StandardOpenOption.CREATE);
+                        String filePartName = String.format("%s.%03d", focusedItem, fileCounts++);
+                        uploadPartOfFileToServer(filePartName, bytes, fileCountBySize, focusedItem);
                     }
                     randomAccessFile.close();
-
-                    long finalFileCounts = fileCounts;
-                    Files.list(Paths.get(CLIENT_STORAGE + TEMP_FOLDER)).forEach(p -> {
-                        try {
-                            uploadFileToServer(p, finalFileCounts - 1, focusedItem);
-                            Files.delete(p);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
                 } else
                     uploadFileToServer(Paths.get(CLIENT_STORAGE + focusedItem), fileCounts);
             } catch (IOException e) {
@@ -202,6 +192,16 @@ public class MainController implements Initializable {
         fileMessage.setAccessToken(accessToken.getAccessToken());
         fileMessage.setId(accessToken.getId());
         fileMessage.setRealFilename(realFileName);
+        Network.sendMsg(fileMessage);
+    }
+
+    private void uploadPartOfFileToServer(String partFileName,
+                                          byte[] partFile,
+                                          long fileCounts,
+                                          String realFileName) {
+        final FileMessage fileMessage = new FileMessage(partFileName, partFile, fileCounts, realFileName);
+        fileMessage.setAccessToken(accessToken.getAccessToken());
+        fileMessage.setId(accessToken.getId());
         Network.sendMsg(fileMessage);
     }
 
@@ -245,5 +245,20 @@ public class MainController implements Initializable {
 
     public void serverContextMenuRefresh(ActionEvent actionEvent) {
         sendFileListRequest();
+    }
+
+    public void serverContextMenuDelete(ActionEvent actionEvent) {
+        deleteFileFromServer(getFocusedItem(filesListServer));
+    }
+
+    private void deleteFileFromServer(String focusedItem) {
+        if (focusedItem != null) {
+            final FileRequest fileRequest = new FileRequest(focusedItem, true);
+            fileRequest.setAccessToken(accessToken.getAccessToken());
+            fileRequest.setId(accessToken.getId());
+            Network.sendMsg(fileRequest);
+        } else {
+            FxUtils.showAlertDialog("Ошибка!", "Ошибка удаления файла", "Необходимо выбрать строку с файлом из списка!", Alert.AlertType.ERROR);
+        }
     }
 }

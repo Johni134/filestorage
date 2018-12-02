@@ -24,6 +24,13 @@ public class FileMessage extends AbstractMessage {
         this.fileCounts = fileCounts;
     }
 
+    public FileMessage(String filename, byte[] data, Long fileCounts, String realFilename) {
+        this.filename = filename;
+        this.data = data;
+        this.fileCounts = fileCounts;
+        this.realFilename = realFilename;
+    }
+
     public void setRealFilename(String realFilename) {
         this.realFilename = realFilename;
     }

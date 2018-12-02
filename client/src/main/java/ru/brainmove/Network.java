@@ -6,6 +6,8 @@ import io.netty.handler.codec.serialization.ObjectEncoderOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
+import static ru.brainmove.file.FileUtils.MAX_BYTE_SIZE;
+
 public class Network {
     private static Socket socket;
     private static ObjectEncoderOutputStream out;
@@ -15,7 +17,7 @@ public class Network {
         try {
             socket = new Socket("localhost", 8189);
             out = new ObjectEncoderOutputStream(socket.getOutputStream());
-            in = new ObjectDecoderInputStream(socket.getInputStream());
+            in = new ObjectDecoderInputStream(socket.getInputStream(), MAX_BYTE_SIZE * 2);
         } catch (IOException e) {
             e.printStackTrace();
         }
